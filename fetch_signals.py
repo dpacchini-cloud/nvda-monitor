@@ -7,27 +7,22 @@ Every signal is wrapped in try/except so one failure never kills the run.
 IMPORTANT: set CONTACT_EMAIL below to a REAL email. SEC EDGAR's fair-access
 policy rejects requests whose User-Agent looks generic or fake (403 Forbidden).
 """
-import json, sys, time, gzip, io, datetime
+import json, sys, time, gzip, datetime
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
 # ---- EDIT THIS ----
 CONTACT_EMAIL = 'dpacchini@gmail.com'   # <-- put your real email here
 GH_HANDLE = 'dpacchini-cloud'
-# SEC wants: "Company/Project Name AdminContact@domain.com"
 SEC_UA = f'nvda-monitor/{GH_HANDLE} {CONTACT_EMAIL}'
 TIMEOUT = 30
 RETRIES = 3
-BACKOFF = 2.0  # seconds, doubles each retry
+BACKOFF = 2.0
 
 
 def http_get(url, ua=SEC_UA, extra=None, retries=RETRIES):
-    """GET with retry/backoff and transparent gzip. Raises on final failure."""
-    hdr = {
-        'User-Agent': ua,
-        'Accept-Encoding': 'gzip, deflate',
-        'Accept': 'application/json, text/csv, */*',
-    }
+    hdr = {'User-Agent': ua, 'Accept-Encoding': 'gzip, deflate',
+           'Accept': 'application/json, text/csv, */*'}
     if extra:
         hdr.update(extra)
     last = None
@@ -38,16 +33,10 @@ def http_get(url, ua=SEC_UA, extra=None, retries=RETRIES):
                 if r.headers.get('Content-Encoding') == 'gzip':
                     raw = gzip.decompress(raw)
                 return raw
-        except HTTPError as e:
+        except (HTTPError, URLError) as e:
             last = e
-            # 403/429 from SEC are often transient rate-limits on shared IPs; back off
-            if e.code in (403, 429, 500, 502, 503) and attempt < retries - 1:
-                time.sleep(BACKOFF * (2 ** attempt))
-                continue
-            raise
-        except URLError as e:
-            last = e
-            if attempt < retries - 1:
+            code = getattr(e, 'code', None)
+            if (code in (403, 429, 500, 502, 503) or code is None) and attempt < retries - 1:
                 time.sleep(BACKOFF * (2 ** attempt))
                 continue
             raise
@@ -55,55 +44,70 @@ def http_get(url, ua=SEC_UA, extra=None, retries=RETRIES):
         raise last
 
 
-# ---------- NVDA share price (fallback chain) ----------
+# ---------- NVDA share price (multi-source fallback) ----------
+def _from_stooq():
+    raw = http_get('https://stooq.com/q/l/?s=nvda.us&f=sd2t2ohlcv&h&e=csv',
+                   ua='Mozilla/5.0 (nvda-monitor)').decode('utf-8', 'replace')
+    lines = raw.strip().split('\n')
+    if len(lines) < 2 or 'N/D' in lines[1]:
+        raise ValueError('stooq no data')
+    row = lines[1].split(',')
+    close = float(row[6])
+    if close <= 0:
+        raise ValueError('stooq zero')
+    return {'value': round(close, 2), 'as_of': row[1], 'source': 'Stooq',
+            'url': 'https://stooq.com/q/?s=nvda.us'}
+
+
+def _from_yahoo():
+    url = ('https://query1.finance.yahoo.com/v8/finance/chart/NVDA'
+           '?range=5d&interval=1d')
+    raw = http_get(url, ua='Mozilla/5.0 (nvda-monitor)').decode('utf-8', 'replace')
+    j = json.loads(raw)
+    res = j['chart']['result'][0]
+    meta = res.get('meta', {})
+    price = meta.get('regularMarketPrice')
+    if price and price > 0:
+        ts = meta.get('regularMarketTime')
+        as_of = (datetime.datetime.utcfromtimestamp(ts).date().isoformat()
+                 if ts else datetime.date.today().isoformat())
+        return {'value': round(float(price), 2), 'as_of': as_of, 'source': 'Yahoo Finance',
+                'url': 'https://finance.yahoo.com/quote/NVDA'}
+    closes = res['indicators']['quote'][0]['close']
+    stamps = res['timestamp']
+    for c, t in zip(reversed(closes), reversed(stamps)):
+        if c:
+            return {'value': round(float(c), 2),
+                    'as_of': datetime.datetime.utcfromtimestamp(t).date().isoformat(),
+                    'source': 'Yahoo Finance (close)', 'url': 'https://finance.yahoo.com/quote/NVDA'}
+    raise ValueError('yahoo no price')
+
+
 def nvda_price():
     errors = []
-    # Source 1: Stooq daily CSV (l/ endpoint)
-    for url in (
-        'https://stooq.com/q/l/?s=nvda.us&f=sd2t2ohlcv&h&e=csv',
-        'https://stooq.pl/q/l/?s=nvda.us&f=sd2t2ohlcv&h&e=csv',
-    ):
+    for fn in (_from_yahoo, _from_stooq):
         try:
-            raw = http_get(url, ua='Mozilla/5.0 (nvda-monitor)').decode('utf-8', 'replace')
-            lines = raw.strip().split('\n')
-            if len(lines) >= 2 and 'N/D' not in lines[1]:
-                row = lines[1].split(',')
-                close = float(row[6])
-                if close > 0:
-                    return {'value': round(close, 2), 'as_of': row[1],
-                            'source': 'Stooq', 'url': 'https://stooq.com/q/?s=nvda.us'}
-            errors.append(f'stooq: no data ({lines[1][:40] if len(lines)>1 else "empty"})')
+            return fn()
         except Exception as e:
-            errors.append(f'stooq: {type(e).__name__}: {e}')
-    # Source 2: Stooq historical daily CSV (d/ endpoint) — different path, often up when l/ is 404
-    try:
-        raw = http_get('https://stooq.com/q/d/l/?s=nvda.us&i=d',
-                       ua='Mozilla/5.0 (nvda-monitor)').decode('utf-8', 'replace')
-        lines = [l for l in raw.strip().split('\n') if l and l[0].isdigit()]
-        if lines:
-            last = lines[-1].split(',')  # Date,Open,High,Low,Close,Volume
-            close = float(last[4])
-            return {'value': round(close, 2), 'as_of': last[0],
-                    'source': 'Stooq (daily history)', 'url': 'https://stooq.com/q/d/?s=nvda.us'}
-    except Exception as e:
-        errors.append(f'stooq-hist: {type(e).__name__}: {e}')
+            errors.append(f'{fn.__name__}: {type(e).__name__}: {e}')
     return {'error': ' | '.join(errors)}
 
 
-# ---------- SEC EDGAR helpers ----------
+# ---------- SEC EDGAR ----------
 def sec_facts(cik):
-    url = f'https://data.sec.gov/api/xbrl/companyfacts/CIK{cik:010d}.json'
-    return json.loads(http_get(url))
+    return json.loads(http_get(f'https://data.sec.gov/api/xbrl/companyfacts/CIK{cik:010d}.json'))
 
 
-def quarterly_series(facts, concepts):
+def latest_quarters(facts, concepts, n=6):
+    """Merge all candidate concepts, keep the latest-FILED value per quarter-end,
+    return the last `n` genuine quarterly points sorted oldest->newest."""
+    by_end = {}
     for concept in concepts:
         try:
-            raw = facts['facts']['us-gaap'][concept]['units']['USD']
+            rows = facts['facts']['us-gaap'][concept]['units']['USD']
         except KeyError:
             continue
-        rows, seen = [], set()
-        for x in raw:
+        for x in rows:
             if x.get('form') not in ('10-Q', '10-K'):
                 continue
             if 'start' not in x or 'end' not in x:
@@ -115,33 +119,33 @@ def quarterly_series(facts, concepts):
                 continue
             if not (60 < (e - s).days < 100):
                 continue
-            if x['end'] in seen:
-                continue
-            seen.add(x['end'])
-            rows.append({'end': x['end'], 'val': x['val']})
-        if len(rows) >= 5:
-            return sorted(rows, key=lambda r: r['end']), concept
-    return [], None
+            filed = x.get('filed', '')
+            prev = by_end.get(x['end'])
+            if prev is None or filed > prev[0]:
+                by_end[x['end']] = (filed, x['val'])
+    pts = sorted(({'end': k, 'val': v[1]} for k, v in by_end.items()),
+                 key=lambda r: r['end'])
+    return pts[-n:] if len(pts) >= n else pts
 
 
 def nvda_revenue_trend():
     try:
         facts = sec_facts(1045810)
-        series, concept = quarterly_series(facts, [
-            'RevenueFromContractWithCustomerExcludingAssessedTax',
-            'Revenues',
-        ])
+        series = latest_quarters(facts, [
+            'RevenueFromContractWithCustomerExcludingAssessedTax', 'Revenues'])
         if len(series) < 5:
-            return {'error': 'insufficient quarterly points from EDGAR'}
+            return {'error': 'insufficient quarterly points'}
         latest, prior_q, year_ago = series[-1], series[-2], series[-5]
+        if latest['val'] < 5e9:
+            return {'error': f'suspect stale value {latest["val"]/1e9:.1f}bn as of {latest["end"]}'}
         return {
             'qoq_pct': round((latest['val'] / prior_q['val'] - 1) * 100, 1),
             'yoy_pct': round((latest['val'] / year_ago['val'] - 1) * 100, 1),
             'latest_bn': round(latest['val'] / 1e9, 2),
             'as_of': latest['end'],
-            'source': f'SEC EDGAR ({concept})',
+            'source': 'SEC EDGAR (total revenue)',
             'url': 'https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001045810&type=10-Q',
-            'note': 'Total revenue proxy — DC segment isn\'t XBRL-tagged; DC ~90%+ of revenue since FY26.',
+            'note': 'Total revenue proxy — DC segment isn\'t XBRL-tagged; DC ~90%+ since FY26.',
         }
     except Exception as e:
         return {'error': f'{type(e).__name__}: {e}'}
@@ -149,36 +153,36 @@ def nvda_revenue_trend():
 
 def hyperscaler_capex():
     ciks = {'MSFT': 789019, 'GOOGL': 1652044, 'META': 1326801, 'AMZN': 1018724}
-    components = {}
+    comp = {}
     for name, cik in ciks.items():
         try:
             facts = sec_facts(cik)
-            series, _ = quarterly_series(facts, [
+            series = latest_quarters(facts, [
                 'PaymentsToAcquirePropertyPlantAndEquipment',
-                'PaymentsToAcquireProductiveAssets',
-            ])
+                'PaymentsToAcquireProductiveAssets'])
             if len(series) < 5:
-                components[name] = {'error': 'insufficient data'}
+                comp[name] = {'error': 'insufficient data'}
                 continue
             latest, year_ago = series[-1], series[-5]
-            components[name] = {
-                'latest_bn': round(latest['val'] / 1e9, 2),
-                'yoy_pct': round((latest['val'] / year_ago['val'] - 1) * 100, 1),
-                'as_of': latest['end'],
-            }
-            time.sleep(0.3)  # be polite to SEC between companies
+            d0 = datetime.date.fromisoformat(year_ago['end'])
+            d1 = datetime.date.fromisoformat(latest['end'])
+            if not (330 < (d1 - d0).days < 400):
+                comp[name] = {'error': f'baseline not ~1yr apart ({year_ago["end"]}->{latest["end"]})'}
+                continue
+            comp[name] = {'latest_bn': round(latest['val'] / 1e9, 2),
+                          'yoy_pct': round((latest['val'] / year_ago['val'] - 1) * 100, 1),
+                          'as_of': latest['end']}
+            time.sleep(0.3)
         except Exception as e:
-            components[name] = {'error': f'{type(e).__name__}: {e}'}
-    valid = [v for v in components.values() if 'yoy_pct' in v]
+            comp[name] = {'error': f'{type(e).__name__}: {e}'}
+    valid = [v for v in comp.values() if 'yoy_pct' in v]
     if not valid:
-        return {'error': 'no components succeeded', 'components': components}
-    return {
-        'yoy_pct': round(sum(v['yoy_pct'] for v in valid) / len(valid), 1),
-        'components': components,
-        'as_of': max(v['as_of'] for v in valid),
-        'source': 'SEC EDGAR — PaymentsToAcquirePropertyPlantAndEquipment, MSFT/GOOGL/META/AMZN blend',
-        'url': 'https://www.sec.gov/edgar/searchedgar/companysearch',
-    }
+        return {'error': 'no components succeeded', 'components': comp}
+    return {'yoy_pct': round(sum(v['yoy_pct'] for v in valid) / len(valid), 1),
+            'components': comp,
+            'as_of': max(v['as_of'] for v in valid),
+            'source': 'SEC EDGAR — capex (PP&E), MSFT/GOOGL/META/AMZN blend',
+            'url': 'https://www.sec.gov/edgar/searchedgar/companysearch'}
 
 
 signals = {
@@ -187,10 +191,8 @@ signals = {
     'price': nvda_price(),
     'nvda_revenue': nvda_revenue_trend(),
     'hyperscaler_capex': hyperscaler_capex(),
-    'manual': {
-        'note': 'H100 rental and ASIC share are behind subscription paywalls (SemiAnalysis, Silicon Data). '
-                'Update these via the URL hash on the dashboard; values persist in the shared link.'
-    },
+    'manual': {'note': 'H100 rental and ASIC share are behind subscription paywalls '
+                       '(SemiAnalysis, Silicon Data). Update via the URL hash on the dashboard.'},
 }
 
 json.dump(signals, sys.stdout, indent=2)
