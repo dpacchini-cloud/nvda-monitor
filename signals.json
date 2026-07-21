@@ -1,29 +1,47 @@
 {
-  "updated_at": "2026-07-21T04:09:56Z",
+  "updated_at": "2026-07-21T04:21:52Z",
+  "contact_configured": true,
   "price": {
-    "error": "HTTPError: HTTP Error 404: Not Found"
+    "error": "stooq: HTTPError: HTTP Error 404: Not Found | stooq: HTTPError: HTTP Error 404: Not Found"
   },
   "nvda_revenue": {
-    "error": "HTTPError: HTTP Error 403: Forbidden"
+    "qoq_pct": 3.0,
+    "yoy_pct": 40.8,
+    "latest_bn": 3.1,
+    "as_of": "2020-01-26",
+    "source": "SEC EDGAR (RevenueFromContractWithCustomerExcludingAssessedTax)",
+    "url": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001045810&type=10-Q",
+    "note": "Total revenue proxy \u2014 DC segment isn't XBRL-tagged; DC ~90%+ of revenue since FY26."
   },
   "hyperscaler_capex": {
-    "error": "no components succeeded",
+    "yoy_pct": 166.2,
     "components": {
       "MSFT": {
-        "error": "HTTPError: HTTP Error 403: Forbidden"
+        "latest_bn": 30.88,
+        "yoy_pct": 95.4,
+        "as_of": "2026-03-31"
       },
       "GOOGL": {
-        "error": "HTTPError: HTTP Error 403: Forbidden"
+        "latest_bn": 35.67,
+        "yoy_pct": 264.5,
+        "as_of": "2026-03-31"
       },
       "META": {
-        "error": "HTTPError: HTTP Error 403: Forbidden"
+        "latest_bn": 19.0,
+        "yoy_pct": 249.1,
+        "as_of": "2026-03-31"
       },
       "AMZN": {
-        "error": "HTTPError: HTTP Error 403: Forbidden"
+        "latest_bn": 1.86,
+        "yoy_pct": 55.7,
+        "as_of": "2017-03-31"
       }
-    }
+    },
+    "as_of": "2026-03-31",
+    "source": "SEC EDGAR \u2014 PaymentsToAcquirePropertyPlantAndEquipment, MSFT/GOOGL/META/AMZN blend",
+    "url": "https://www.sec.gov/edgar/searchedgar/companysearch"
   },
   "manual": {
-    "note": "H100 rental and ASIC share are behind subscription paywalls (SemiAnalysis, Silicon Data). Update these via the URL hash on the dashboard; the values persist in the shared link."
+    "note": "H100 rental and ASIC share are behind subscription paywalls (SemiAnalysis, Silicon Data). Update these via the URL hash on the dashboard; values persist in the shared link."
   }
 }
