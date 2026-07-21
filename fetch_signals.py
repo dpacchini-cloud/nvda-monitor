@@ -7,7 +7,7 @@ Each signal is wrapped in try/except so one failure never kills the run.
 import json, sys, datetime, urllib.request
 from urllib.request import Request, urlopen
 
-UA = 'NVDA Regime Monitor (github.com/YOUR_HANDLE) contact@example.com'
+UA = 'NVDA Regime Monitor (github.com/dpacchini-cloud) dpacchini@gmail.com'
 TIMEOUT = 25
 
 
