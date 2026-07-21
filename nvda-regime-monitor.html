@@ -213,13 +213,15 @@ function buildCards(){
 
 function applyLive(){
   if(!LIVE) return;
+  // Live data always wins for auto-fetched fields (price + auto signals).
+  // The URL hash only carries MANUAL overrides (EPS + paywalled signals),
+  // so a browser-autocompleted hash can never pin stale auto values.
   const p = LIVE.price;
-  const overrides = new URLSearchParams(location.hash.slice(1));
   if (p && p.value){
-    if (!overrides.get('p')){ $('px').value = p.value.toFixed(2); }
+    $('px').value = p.value.toFixed(2);
     $('pxsrc').textContent = `${p.source} · ${p.as_of}`;
   } else if (p && p.error){
-    $('pxsrc').textContent = 'price fetch failed';
+    $('pxsrc').textContent = 'price fetch failed — enter manually';
   }
   SIGNALS.forEach(s=>{
     if(!s.auto) return;
@@ -233,7 +235,7 @@ function applyLive(){
     }
     const v = obj[s.auto.field];
     if (v === null || v === undefined) return;
-    if (!overrides.get(s.id)) $(`s_${s.id}`).value = s.auto.map(v);
+    $(`s_${s.id}`).value = s.auto.map(v);   // auto always overrides the hash
     const stale = ageHours(LIVE.updated_at) > 72;
     el.style.display = 'block';
     el.className = 'live' + (stale ? ' stale' : '');
@@ -280,17 +282,23 @@ function drawGrid(px,eps,mult){
   });
   $('gridTbl').innerHTML=h;
 }
+// Auto-controlled fields never go in the hash — they come from signals.json.
+// The hash carries only manual state: EPS + the non-auto (paywalled) signals.
+const MANUAL_IDS = SIGNALS.filter(s=>!s.auto).map(s=>s.id);
+let userInteracted = false;   // don't write the hash until the user actually changes something
+
 function writeHash(){
-  const st={p:$('px').value,e:$('eps').value};
-  SIGNALS.forEach(s=>st[s.id]=$(`s_${s.id}`).value);
+  if(!userInteracted) return;               // keeps init paint from baking defaults into the URL
+  const st={e:$('eps').value};
+  MANUAL_IDS.forEach(id=>st[id]=$(`s_${id}`).value);
   history.replaceState(null,'','#'+new URLSearchParams(st).toString());
 }
 function readHash(){
   if(!location.hash)return;
   const q=new URLSearchParams(location.hash.slice(1));
-  if(q.get('p'))$('px').value=q.get('p');
   if(q.get('e'))$('eps').value=q.get('e');
-  SIGNALS.forEach(s=>{const v=q.get(s.id); if(v!==null&&v!==undefined&&v!=='')$(`s_${s.id}`).value=v;});
+  // only apply manual signals from the hash; ignore any stale p/dc/capex the browser autocompleted
+  MANUAL_IDS.forEach(id=>{const v=q.get(id); if(v!==null&&v!==undefined&&v!=='')$(`s_${id}`).value=v;});
 }
 async function loadSignals(){
   try{
@@ -304,16 +312,21 @@ async function loadSignals(){
   }
 }
 
+function markInteracted(){ userInteracted = true; }
+
 $('refresh').addEventListener('click', loadSignals);
 $('share').addEventListener('click',()=>{
+  userInteracted = true; writeHash();   // ensure the link reflects current manual state
   navigator.clipboard.writeText(location.href).then(()=>{$('copied').textContent='copied';setTimeout(()=>$('copied').textContent='',1800);});
 });
-['px','eps'].forEach(id=>$(id).addEventListener('input',recalc));
+['px','eps'].forEach(id=>$(id).addEventListener('input',()=>{ markInteracted(); recalc(); }));
 
 buildCards();
-readHash();
-recalc();
-loadSignals();
+// mark interaction whenever the user changes any signal dropdown
+SIGNALS.forEach(s=>$(`s_${s.id}`).addEventListener('change', markInteracted));
+readHash();       // apply manual overrides from a shared link (if any)
+recalc();         // first paint with defaults + any manual hash values
+loadSignals();    // then live data arrives and overwrites all auto fields
 </script>
 </body>
 </html>
