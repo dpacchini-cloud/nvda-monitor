@@ -1,47 +1,39 @@
 {
-  "updated_at": "2026-07-21T04:21:52Z",
+  "updated_at": "2026-07-21T04:27:23Z",
   "contact_configured": true,
   "price": {
-    "error": "stooq: HTTPError: HTTP Error 404: Not Found | stooq: HTTPError: HTTP Error 404: Not Found"
+    "value": 203.28,
+    "as_of": "2026-07-20",
+    "source": "Yahoo Finance",
+    "url": "https://finance.yahoo.com/quote/NVDA"
   },
   "nvda_revenue": {
-    "qoq_pct": 3.0,
-    "yoy_pct": 40.8,
-    "latest_bn": 3.1,
-    "as_of": "2020-01-26",
-    "source": "SEC EDGAR (RevenueFromContractWithCustomerExcludingAssessedTax)",
+    "qoq_pct": 43.2,
+    "yoy_pct": 132.6,
+    "latest_bn": 81.61,
+    "as_of": "2026-04-26",
+    "source": "SEC EDGAR (total revenue)",
     "url": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001045810&type=10-Q",
-    "note": "Total revenue proxy \u2014 DC segment isn't XBRL-tagged; DC ~90%+ of revenue since FY26."
+    "note": "Total revenue proxy \u2014 DC segment isn't XBRL-tagged; DC ~90%+ since FY26."
   },
   "hyperscaler_capex": {
-    "yoy_pct": 166.2,
+    "error": "no components succeeded",
     "components": {
       "MSFT": {
-        "latest_bn": 30.88,
-        "yoy_pct": 95.4,
-        "as_of": "2026-03-31"
+        "error": "baseline not ~1yr apart (2024-12-31->2026-03-31)"
       },
       "GOOGL": {
-        "latest_bn": 35.67,
-        "yoy_pct": 264.5,
-        "as_of": "2026-03-31"
+        "error": "baseline not ~1yr apart (2022-03-31->2026-03-31)"
       },
       "META": {
-        "latest_bn": 19.0,
-        "yoy_pct": 249.1,
-        "as_of": "2026-03-31"
+        "error": "baseline not ~1yr apart (2022-03-31->2026-03-31)"
       },
       "AMZN": {
-        "latest_bn": 1.86,
-        "yoy_pct": 55.7,
-        "as_of": "2017-03-31"
+        "error": "baseline not ~1yr apart (2024-09-30->2026-03-31)"
       }
-    },
-    "as_of": "2026-03-31",
-    "source": "SEC EDGAR \u2014 PaymentsToAcquirePropertyPlantAndEquipment, MSFT/GOOGL/META/AMZN blend",
-    "url": "https://www.sec.gov/edgar/searchedgar/companysearch"
+    }
   },
   "manual": {
-    "note": "H100 rental and ASIC share are behind subscription paywalls (SemiAnalysis, Silicon Data). Update these via the URL hash on the dashboard; values persist in the shared link."
+    "note": "H100 rental and ASIC share are behind subscription paywalls (SemiAnalysis, Silicon Data). Update via the URL hash on the dashboard."
   }
 }
