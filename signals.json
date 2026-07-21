@@ -1,0 +1,29 @@
+{
+  "updated_at": "2026-07-21T04:09:56Z",
+  "price": {
+    "error": "HTTPError: HTTP Error 404: Not Found"
+  },
+  "nvda_revenue": {
+    "error": "HTTPError: HTTP Error 403: Forbidden"
+  },
+  "hyperscaler_capex": {
+    "error": "no components succeeded",
+    "components": {
+      "MSFT": {
+        "error": "HTTPError: HTTP Error 403: Forbidden"
+      },
+      "GOOGL": {
+        "error": "HTTPError: HTTP Error 403: Forbidden"
+      },
+      "META": {
+        "error": "HTTPError: HTTP Error 403: Forbidden"
+      },
+      "AMZN": {
+        "error": "HTTPError: HTTP Error 403: Forbidden"
+      }
+    }
+  },
+  "manual": {
+    "note": "H100 rental and ASIC share are behind subscription paywalls (SemiAnalysis, Silicon Data). Update these via the URL hash on the dashboard; the values persist in the shared link."
+  }
+}
