@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-07-21T04:27:23Z",
+  "updated_at": "2026-07-21T04:31:22Z",
   "contact_configured": true,
   "price": {
     "value": 203.28,
@@ -9,7 +9,7 @@
   },
   "nvda_revenue": {
     "qoq_pct": 43.2,
-    "yoy_pct": 132.6,
+    "yoy_pct": 85.2,
     "latest_bn": 81.61,
     "as_of": "2026-04-26",
     "source": "SEC EDGAR (total revenue)",
@@ -17,21 +17,32 @@
     "note": "Total revenue proxy \u2014 DC segment isn't XBRL-tagged; DC ~90%+ since FY26."
   },
   "hyperscaler_capex": {
-    "error": "no components succeeded",
+    "yoy_pct": 78.8,
     "components": {
       "MSFT": {
-        "error": "baseline not ~1yr apart (2024-12-31->2026-03-31)"
+        "latest_bn": 30.88,
+        "yoy_pct": 84.4,
+        "as_of": "2026-03-31"
       },
       "GOOGL": {
-        "error": "baseline not ~1yr apart (2022-03-31->2026-03-31)"
+        "latest_bn": 35.67,
+        "yoy_pct": 107.4,
+        "as_of": "2026-03-31"
       },
       "META": {
-        "error": "baseline not ~1yr apart (2022-03-31->2026-03-31)"
+        "latest_bn": 19.0,
+        "yoy_pct": 46.8,
+        "as_of": "2026-03-31"
       },
       "AMZN": {
-        "error": "baseline not ~1yr apart (2024-09-30->2026-03-31)"
+        "latest_bn": 44.2,
+        "yoy_pct": 76.7,
+        "as_of": "2026-03-31"
       }
-    }
+    },
+    "as_of": "2026-03-31",
+    "source": "SEC EDGAR \u2014 capex (PP&E), MSFT/GOOGL/META/AMZN blend",
+    "url": "https://www.sec.gov/edgar/searchedgar/companysearch"
   },
   "manual": {
     "note": "H100 rental and ASIC share are behind subscription paywalls (SemiAnalysis, Silicon Data). Update via the URL hash on the dashboard."
