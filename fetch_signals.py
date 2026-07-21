@@ -98,7 +98,7 @@ def sec_facts(cik):
     return json.loads(http_get(f'https://data.sec.gov/api/xbrl/companyfacts/CIK{cik:010d}.json'))
 
 
-def latest_quarters(facts, concepts, n=6):
+def latest_quarters(facts, concepts, n=12):
     """Merge all candidate concepts, keep the latest-FILED value per quarter-end,
     return the last `n` genuine quarterly points sorted oldest->newest."""
     by_end = {}
@@ -135,9 +135,16 @@ def nvda_revenue_trend():
             'RevenueFromContractWithCustomerExcludingAssessedTax', 'Revenues'])
         if len(series) < 5:
             return {'error': 'insufficient quarterly points'}
-        latest, prior_q, year_ago = series[-1], series[-2], series[-5]
+        latest, prior_q = series[-1], series[-2]
         if latest['val'] < 5e9:
             return {'error': f'suspect stale value {latest["val"]/1e9:.1f}bn as of {latest["end"]}'}
+        d1 = datetime.date.fromisoformat(latest['end'])
+        year_ago, best = None, None
+        for pt in series[:-1]:
+            d0 = datetime.date.fromisoformat(pt['end'])
+            gap = abs((d1 - d0).days - 365)
+            if best is None or gap < best:
+                best, year_ago = gap, pt
         return {
             'qoq_pct': round((latest['val'] / prior_q['val'] - 1) * 100, 1),
             'yoy_pct': round((latest['val'] / year_ago['val'] - 1) * 100, 1),
@@ -163,11 +170,18 @@ def hyperscaler_capex():
             if len(series) < 5:
                 comp[name] = {'error': 'insufficient data'}
                 continue
-            latest, year_ago = series[-1], series[-5]
-            d0 = datetime.date.fromisoformat(year_ago['end'])
+            latest = series[-1]
             d1 = datetime.date.fromisoformat(latest['end'])
+            # find the quarter closest to 365 days before the latest (handles gaps in the series)
+            year_ago, best = None, None
+            for pt in series[:-1]:
+                d0 = datetime.date.fromisoformat(pt['end'])
+                gap = abs((d1 - d0).days - 365)
+                if best is None or gap < best:
+                    best, year_ago = gap, pt
+            d0 = datetime.date.fromisoformat(year_ago['end'])
             if not (330 < (d1 - d0).days < 400):
-                comp[name] = {'error': f'baseline not ~1yr apart ({year_ago["end"]}->{latest["end"]})'}
+                comp[name] = {'error': f'no ~1yr baseline (nearest {year_ago["end"]}->{latest["end"]})'}
                 continue
             comp[name] = {'latest_bn': round(latest['val'] / 1e9, 2),
                           'yoy_pct': round((latest['val'] / year_ago['val'] - 1) * 100, 1),
