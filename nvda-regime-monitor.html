@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NVDA Exit-Multiple Regime Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EFF1EE; --panel:#FFFFFF; --ink:#171B21; --mute:#5C646D;
+  --rule:#C9CEC9; --teal:#0F6B66; --oxide:#B0452C; --amber:#C98A1B;
+  --auto:#0F6B66; --stale:#B0452C;
+  --band-cyc:#E9D5CC; --band-mkt:#E4E7E2; --band-prem:#D3E2DE; --band-rer:#BFD8D2;
+  --mono:'IBM Plex Mono',ui-monospace,monospace; --sans:'Archivo',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.45}
+.wrap{max-width:1080px;margin:0 auto;padding:28px 20px 64px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--mute)}
+header{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between;border-bottom:2px solid var(--ink);padding-bottom:16px}
+h1{font-variation-settings:'wdth' 118,'wght' 750;font-size:clamp(26px,4.5vw,40px);line-height:1.02;letter-spacing:-.01em}
+h1 small{display:block;font-variation-settings:'wdth' 100,'wght' 450;font-size:13px;color:var(--mute);letter-spacing:0;margin-top:6px}
+.price-chip{text-align:right}
+.price-chip .val{font-family:var(--mono);font-size:30px;font-weight:600}
+.price-chip .src{font-family:var(--mono);font-size:10.5px;color:var(--mute);margin-top:2px}
+.price-chip input{font-family:var(--mono);font-size:30px;font-weight:600;width:150px;border:none;border-bottom:1.5px dashed var(--rule);background:transparent;text-align:right;color:var(--ink)}
+.price-chip input:focus{outline:none;border-bottom-color:var(--ink)}
+
+.freshness{margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--mute);display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:middle}
+.dot.ok{background:var(--auto)} .dot.stale{background:var(--stale)} .dot.man{background:var(--amber)}
+
+.dial{background:var(--panel);border:1px solid var(--rule);margin-top:24px;padding:24px 24px 20px}
+.dial-head{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.verdict{font-variation-settings:'wdth' 112,'wght' 700;font-size:22px}
+.verdict .m{font-family:var(--mono)}
+.spectrum{position:relative;height:64px;margin:8px 0 4px}
+.bands{position:absolute;inset:22px 0 18px;display:flex;border:1px solid var(--ink)}
+.band{position:relative;height:100%}
+.band span{position:absolute;top:calc(100% + 6px);left:0;font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--mute);white-space:nowrap}
+.b1{background:var(--band-cyc)} .b2{background:var(--band-mkt)} .b3{background:var(--band-prem)} .b4{background:var(--band-rer)}
+.needle{position:absolute;top:16px;bottom:12px;width:2.5px;background:var(--ink);transform:translateX(-50%);transition:left .5s cubic-bezier(.2,.8,.2,1)}
+.needle::before{content:'';position:absolute;top:-7px;left:50%;transform:translateX(-50%);border:6px solid transparent;border-top:8px solid var(--ink)}
+@media (prefers-reduced-motion: reduce){.needle{transition:none}}
+.dial-out{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0;margin-top:34px;border-top:1px solid var(--rule)}
+.dial-out div{padding:12px 14px 4px;border-right:1px solid var(--rule)}
+.dial-out div:last-child{border-right:none}
+.dial-out .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.dial-out .v{font-family:var(--mono);font-size:21px;font-weight:600;margin-top:2px}
+.up{color:var(--teal)} .dn{color:var(--oxide)} .fl{color:var(--amber)}
+
+.ctl{display:flex;gap:20px;flex-wrap:wrap;align-items:center;margin-top:18px;font-family:var(--mono);font-size:12.5px}
+.ctl label{color:var(--mute)}
+.ctl input{font-family:var(--mono);font-size:13px;width:84px;padding:4px 6px;border:1px solid var(--rule);background:var(--panel);color:var(--ink)}
+.ctl button{font-family:var(--mono);font-size:12px;letter-spacing:.06em;padding:6px 14px;border:1px solid var(--ink);background:var(--ink);color:#fff;cursor:pointer}
+.ctl button.ghost{background:transparent;color:var(--ink)}
+.ctl button:hover{opacity:.85}
+
+.sec{margin-top:36px}
+.sec>.eyebrow{border-bottom:1px solid var(--ink);padding-bottom:6px;margin-bottom:14px;display:block;color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.card{background:var(--panel);border:1px solid var(--rule);padding:14px 16px;display:flex;flex-direction:column;gap:8px;position:relative}
+.card.auto{border-left:3px solid var(--auto)}
+.card.manual{border-left:3px solid var(--amber)}
+.card h3{font-variation-settings:'wdth' 108,'wght' 640;font-size:14.5px;line-height:1.25}
+.card .w{font-family:var(--mono);font-size:10px;color:var(--mute)}
+.card .row{display:flex;align-items:center;gap:8px}
+.card select,.card input{font-family:var(--mono);font-size:13px;padding:5px 7px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);flex:1;min-width:0}
+.card .live{font-family:var(--mono);font-size:11px;line-height:1.4;color:var(--auto);background:#E7F0EE;padding:6px 8px;border:1px solid #C7DDD9}
+.card .live b{font-weight:600}
+.card .live.stale{color:var(--stale);background:#FBE9E3;border-color:#EBCFC3}
+.card .thresh{font-family:var(--mono);font-size:10.5px;color:var(--mute);line-height:1.5}
+.card a{color:var(--teal);font-size:11.5px;font-family:var(--mono);text-decoration:none;border-bottom:1px dotted var(--teal)}
+.badge{font-family:var(--mono);font-size:10.5px;font-weight:600;padding:2px 8px;border:1px solid currentColor;align-self:flex-start}
+.badge.dn{color:var(--oxide)} .badge.fl{color:var(--amber)} .badge.up{color:var(--teal)}
+
+table{width:100%;border-collapse:collapse;background:var(--panel);font-family:var(--mono);font-size:13px}
+th,td{border:1px solid var(--rule);padding:8px 10px;text-align:right}
+th{font-family:var(--sans);font-variation-settings:'wght' 650;font-size:12px;background:var(--ink);color:#fff;text-align:right}
+td:first-child,th:first-child{text-align:left}
+td.hit{outline:2.5px solid var(--ink);outline-offset:-2.5px;font-weight:600}
+td.neg{color:var(--oxide)} td.pos{color:var(--teal)}
+.foot{margin-top:28px;font-size:12px;color:var(--mute);line-height:1.6;border-top:1px solid var(--rule);padding-top:12px}
+code{font-family:var(--mono);font-size:11px;background:#E4E7E2;padding:1px 5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div>
+    <span class="eyebrow">Signal-weighted valuation regime</span>
+    <h1>NVDA Exit-Multiple Monitor<small>Which P/E regime do current data-center &amp; GPU-rental signals support?</small></h1>
+  </div>
+  <div class="price-chip">
+    <div class="val">$<input id="px" type="number" step="0.01" value="195.00" aria-label="NVDA share price"></div>
+    <div class="src" id="pxsrc">manual</div>
+  </div>
+</header>
+
+<div class="freshness" id="freshness">
+  <span><span class="dot ok"></span>auto</span>
+  <span><span class="dot man"></span>manual</span>
+  <span><span class="dot stale"></span>stale (&gt;72h)</span>
+  <span id="lastRefresh"></span>
+</div>
+
+<div class="ctl">
+  <button id="refresh">Refresh from signals.json</button>
+  <label>NTM EPS $ <input id="eps" type="number" step="0.05" value="10.25"></label>
+  <button class="ghost" id="share">Copy link with overrides</button>
+  <span id="copied" style="color:var(--teal)"></span>
+</div>
+
+<div class="dial" role="region" aria-label="Regime spectrum">
+  <div class="dial-head">
+    <span class="eyebrow">Composite regime</span>
+    <div class="verdict" id="verdict"></div>
+  </div>
+  <div class="spectrum" id="spectrum">
+    <div class="bands">
+      <div class="band b1" style="flex:4"><span>14–16x&nbsp;cyclical</span></div>
+      <div class="band b2" style="flex:5"><span>17–21x&nbsp;market</span></div>
+      <div class="band b3" style="flex:4"><span>22–25x&nbsp;premium</span></div>
+      <div class="band b4" style="flex:7"><span>25x+&nbsp;re-rating</span></div>
+    </div>
+    <div class="needle" id="needle" style="left:35%"></div>
+  </div>
+  <div class="dial-out">
+    <div><div class="k">Implied multiple</div><div class="v" id="oMult">—</div></div>
+    <div><div class="k">Implied price @ EPS</div><div class="v" id="oPx">—</div></div>
+    <div><div class="k">Regime price band</div><div class="v" id="oBand">—</div></div>
+    <div><div class="k">vs current price</div><div class="v" id="oUp">—</div></div>
+  </div>
+</div>
+
+<div class="sec">
+  <span class="eyebrow">Signals — teal border = live-fetched, amber = manual override needed</span>
+  <div class="grid" id="cards"></div>
+</div>
+
+<div class="sec">
+  <span class="eyebrow">Compression grid — implied price = NTM EPS × exit multiple</span>
+  <div style="overflow-x:auto"><table id="gridTbl"></table></div>
+</div>
+
+<div class="foot">
+  <b>Data pipeline:</b> a scheduled GitHub Action runs <code>fetch_signals.py</code> daily, writes <code>signals.json</code>, and commits it back. This page loads that JSON at startup and maps values to dropdown positions via threshold logic. Manual overrides via the URL hash survive refreshes. Auto sources: Stooq (price), SEC EDGAR XBRL (NVDA revenue, hyperscaler capex). Paywalled sources kept as manual: SemiAnalysis H100 1-yr tracker, Silicon Data SDH100RT, Ornn OCPI. Scenario tool, not investment advice.
+</div>
+</div>
+
+<script>
+const SIGNALS=[
+ {id:'h100',w:.25,name:'H100 1-yr contract rate trend (3-mo)',url:'https://newsletter.semianalysis.com/p/the-great-gpu-shortage-rental-capacity',src:'SemiAnalysis 1Y tracker',auto:null,
+  opts:[['-2','Falling >15% (toward $1.70 lows)'],['-1','Drifting down 5–15%'],['0','Flat ±5% (~$2.00–2.50)'],['1','Rising 5–15%'],['2','Rising >15% / capacity sold out']],def:'1',
+  th:'Contract rates jumped ~40% Oct-25→Mar-26 ($1.70→$2.35). Paid feed — set manually until you plug in a SemiAnalysis API key.'},
+ {id:'dc',w:.20,name:'NVDA revenue growth (DC proxy)',url:'https://investor.nvidia.com',src:'SEC EDGAR XBRL',
+  auto:{path:'nvda_revenue', field:'qoq_pct', label:v=>'QoQ '+(v>=0?'+':'')+v.toFixed(1)+'%',
+        map:v=>v<0?'-2':v<5?'-1':v<12?'0':v<20?'1':'2'},
+  opts:[['-2','Negative QoQ'],['-1','0–5% QoQ'],['0','5–12% QoQ'],['1','12–20% QoQ'],['2','>20% QoQ']],def:'0',
+  th:'Auto: NVDA total revenue QoQ from EDGAR. DC segment isn\'t XBRL-tagged; DC has been ~90%+ of total since FY26.'},
+ {id:'capex',w:.20,name:'Hyperscaler capex YoY (MSFT/GOOGL/META/AMZN blend)',url:'https://www.sec.gov/edgar/searchedgar/companysearch',src:'SEC EDGAR XBRL',
+  auto:{path:'hyperscaler_capex', field:'yoy_pct', label:v=>'YoY '+(v>=0?'+':'')+v.toFixed(1)+'%',
+        map:v=>v<-5?'-2':v<0?'-1':v<10?'0':v<25?'1':'2'},
+  opts:[['-2','Cuts / "digestion" language'],['-1','Trimmed at margin'],['0','Maintained (0–10% YoY)'],['1','Raised modestly (10–25%)'],['2','Raised sharply (>25%)']],def:'0',
+  th:'Auto: blended YoY of PaymentsToAcquirePropertyPlantAndEquipment for the four hyperscalers.'},
+ {id:'rev',w:.15,name:'FY EPS revision direction (90-day)',url:'https://stockanalysis.com/stocks/nvda/forecast/',src:'stockanalysis / ChartMill',auto:null,
+  opts:[['-2','Cut >5%'],['-1','Cut 0–5%'],['0','Flat'],['1','Raised 0–5%'],['2','Raised >5%']],def:'2',
+  th:'Yahoo/Finnhub estimate feeds are flaky — kept manual. Next-Q rev estimate was revised +6.7% over past 3 mo (Jun-26).'},
+ {id:'net',w:.10,name:'Networking rev growth (NVLink attach)',url:'https://investor.nvidia.com',src:'NVDA earnings deck',auto:null,
+  opts:[['-2','<25% y/y'],['-1','25–50% y/y'],['0','50–150% y/y'],['1','150–250% y/y'],['2','>250% y/y']],def:'2',
+  th:'Not in XBRL. Update from earnings press release quarterly. +263% last cycle.'},
+ {id:'asic',w:.10,name:'GPU share of hyperscaler AI build',url:'https://newsletter.semianalysis.com',src:'SemiAnalysis / commentary',auto:null,
+  opts:[['-2','<50% (ASICs winning)'],['-1','50–60%'],['0','~60–70% (AWS ~60% now)'],['1','70–80%'],['2','>80%']],def:'0',
+  th:'Trainium 3 ramping since Q2-26; TPU Trillium and MTIA scaling. Qualitative signal — set manually.'}
+];
+const MULTS=[14,16,19,25,30];
+const $=id=>document.getElementById(id);
+let LIVE=null;
+
+function ageHours(iso){
+  if(!iso) return Infinity;
+  const t = new Date(iso).getTime();
+  if (!isFinite(t)) return Infinity;
+  return (Date.now() - t) / 3.6e6;
+}
+function fmtAge(iso){
+  const h = ageHours(iso);
+  if (!isFinite(h)) return 'never';
+  if (h < 1) return Math.round(h*60) + ' min ago';
+  if (h < 48) return Math.round(h) + 'h ago';
+  return Math.round(h/24) + 'd ago';
+}
+
+function buildCards(){
+  $('cards').innerHTML=SIGNALS.map(s=>{
+    const cls = s.auto ? 'auto' : 'manual';
+    return `
+     <div class="card ${cls}" id="card_${s.id}">
+       <div style="display:flex;justify-content:space-between;gap:8px">
+         <h3>${s.name}</h3>
+         <span class="w">w=${(s.w*100).toFixed(0)}%</span>
+       </div>
+       <div class="live" id="live_${s.id}" style="display:none"></div>
+       <div class="row"><select id="s_${s.id}" aria-label="${s.name}">${s.opts.map(o=>`<option value="${o[0]}">${o[1]}</option>`).join('')}</select></div>
+       <span class="badge fl" id="b_${s.id}">neutral</span>
+       <div class="thresh">${s.th}</div>
+       <a href="${s.url}" target="_blank" rel="noopener">${s.src} ↗</a>
+     </div>`;
+  }).join('');
+  SIGNALS.forEach(s=>{ $(`s_${s.id}`).value=s.def; $(`s_${s.id}`).addEventListener('change',recalc); });
+}
+
+function applyLive(){
+  if(!LIVE) return;
+  const p = LIVE.price;
+  const overrides = new URLSearchParams(location.hash.slice(1));
+  if (p && p.value){
+    if (!overrides.get('p')){ $('px').value = p.value.toFixed(2); }
+    $('pxsrc').textContent = `${p.source} · ${p.as_of}`;
+  } else if (p && p.error){
+    $('pxsrc').textContent = 'price fetch failed';
+  }
+  SIGNALS.forEach(s=>{
+    if(!s.auto) return;
+    const obj = LIVE[s.auto.path];
+    const el = $(`live_${s.id}`);
+    if(!obj || obj.error){
+      el.style.display = 'block';
+      el.className = 'live stale';
+      el.textContent = obj && obj.error ? 'Auto fetch failed: ' + obj.error : 'No auto data yet';
+      return;
+    }
+    const v = obj[s.auto.field];
+    if (v === null || v === undefined) return;
+    if (!overrides.get(s.id)) $(`s_${s.id}`).value = s.auto.map(v);
+    const stale = ageHours(LIVE.updated_at) > 72;
+    el.style.display = 'block';
+    el.className = 'live' + (stale ? ' stale' : '');
+    el.innerHTML = `<b>${s.auto.label(v)}</b> · as of ${obj.as_of || '?'} · ${obj.source || 'auto'}${stale ? ' · stale' : ''}`;
+  });
+  $('lastRefresh').textContent = `signals.json refreshed ${fmtAge(LIVE.updated_at)}`;
+}
+
+function regimeName(m){return m<16.5?'14–16x — cyclical semi (Cisco outcome)':m<21.5?'17–21x — market multiple':m<25?'22–25x — premium growth':'25x+ — full re-rating';}
+function bandFor(m){return m<16.5?[14,16]:m<21.5?[17,21]:m<25?[22,25]:[25,30];}
+
+function recalc(){
+  let score=0;
+  SIGNALS.forEach(s=>{
+    const v=parseInt($(`s_${s.id}`).value,10); score+=v*s.w;
+    const b=$(`b_${s.id}`);
+    b.textContent=v<0?'compressive':v>0?'supportive':'neutral';
+    b.className='badge '+(v<0?'dn':v>0?'up':'fl');
+  });
+  const mult=20.5+score*3.25;
+  const px=parseFloat($('px').value)||0, eps=parseFloat($('eps').value)||0;
+  const impl=mult*eps, band=bandFor(mult);
+  const axisMin=12,axisMax=32;
+  $('needle').style.left=(Math.min(Math.max(mult,axisMin),axisMax)-axisMin)/(axisMax-axisMin)*100+'%';
+  $('verdict').innerHTML=`<span class="m">${mult.toFixed(1)}x</span> — ${regimeName(mult)}`;
+  $('oMult').textContent=mult.toFixed(1)+'x';
+  $('oPx').textContent='$'+impl.toFixed(0);
+  $('oBand').textContent='$'+(band[0]*eps).toFixed(0)+'–'+(band[1]*eps).toFixed(0);
+  const up=px?impl/px-1:0;
+  $('oUp').textContent=(up>=0?'+':'')+(up*100).toFixed(1)+'%';
+  $('oUp').className='v '+(up>0.02?'up':up<-0.02?'dn':'fl');
+  drawGrid(px,eps,mult);
+  writeHash();
+}
+function drawGrid(px,eps,mult){
+  const eSet=[{n:'Bear',v:Math.round(eps*0.88*100)/100},{n:'Base',v:eps},{n:'Bull',v:Math.round(eps*1.27*100)/100}];
+  let h='<tr><th>EPS \\ Multiple</th>'+MULTS.map(m=>`<th>${m}x</th>`).join('')+'</tr>';
+  eSet.forEach(e=>{
+    h+=`<tr><td>${e.n} $${e.v.toFixed(2)}</td>`+MULTS.map(m=>{
+      const p=e.v*m, d=px?p/px-1:0;
+      const hit=(e.n==='Base'&&Math.abs(m-mult)===Math.min(...MULTS.map(x=>Math.abs(x-mult))));
+      return `<td class="${hit?'hit ':''}${d<-.02?'neg':d>.02?'pos':''}">$${p.toFixed(0)}<br><span style="font-size:10.5px">${(d>=0?'+':'')+(d*100).toFixed(0)}%</span></td>`;
+    }).join('')+'</tr>';
+  });
+  $('gridTbl').innerHTML=h;
+}
+function writeHash(){
+  const st={p:$('px').value,e:$('eps').value};
+  SIGNALS.forEach(s=>st[s.id]=$(`s_${s.id}`).value);
+  history.replaceState(null,'','#'+new URLSearchParams(st).toString());
+}
+function readHash(){
+  if(!location.hash)return;
+  const q=new URLSearchParams(location.hash.slice(1));
+  if(q.get('p'))$('px').value=q.get('p');
+  if(q.get('e'))$('eps').value=q.get('e');
+  SIGNALS.forEach(s=>{const v=q.get(s.id); if(v!==null&&v!==undefined&&v!=='')$(`s_${s.id}`).value=v;});
+}
+async function loadSignals(){
+  try{
+    const r = await fetch('signals.json?t=' + Date.now(), {cache:'no-store'});
+    if(!r.ok) throw new Error('signals.json not found');
+    LIVE = await r.json();
+    applyLive();
+    recalc();
+  }catch(e){
+    $('lastRefresh').textContent = 'signals.json not loaded (' + e.message + ') — using manual defaults';
+  }
+}
+
+$('refresh').addEventListener('click', loadSignals);
+$('share').addEventListener('click',()=>{
+  navigator.clipboard.writeText(location.href).then(()=>{$('copied').textContent='copied';setTimeout(()=>$('copied').textContent='',1800);});
+});
+['px','eps'].forEach(id=>$(id).addEventListener('input',recalc));
+
+buildCards();
+readHash();
+recalc();
+loadSignals();
+</script>
+</body>
+</html>
