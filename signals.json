@@ -1,8 +1,8 @@
 {
-  "updated_at": "2026-07-31T14:38:52Z",
+  "updated_at": "2026-08-01T13:58:34Z",
   "contact_configured": true,
   "price": {
-    "value": 197.62,
+    "value": 200.75,
     "as_of": "2026-07-31",
     "source": "Yahoo Finance",
     "url": "https://finance.yahoo.com/quote/NVDA"
