@@ -1,9 +1,9 @@
 {
-  "updated_at": "2026-10-29T18:30:26Z",
+  "updated_at": "2026-10-30T18:03:00Z",
   "contact_configured": true,
   "price": {
-    "value": 212.74,
-    "as_of": "2026-10-29",
+    "value": 202.44,
+    "as_of": "2026-10-30",
     "source": "Yahoo Finance",
     "url": "https://finance.yahoo.com/quote/NVDA"
   },
@@ -17,7 +17,7 @@
     "note": "Total revenue proxy \u2014 DC segment isn't XBRL-tagged; DC ~90%+ since FY26."
   },
   "hyperscaler_capex": {
-    "yoy_pct": 81.4,
+    "yoy_pct": 94.3,
     "components": {
       "MSFT": {
         "latest_bn": 39.37,
@@ -35,9 +35,9 @@
         "as_of": "2026-03-31"
       },
       "AMZN": {
-        "latest_bn": 54.21,
-        "yoy_pct": 68.4,
-        "as_of": "2026-06-30"
+        "latest_bn": 77.26,
+        "yoy_pct": 120.1,
+        "as_of": "2026-09-30"
       }
     },
     "as_of": "2026-09-30",
